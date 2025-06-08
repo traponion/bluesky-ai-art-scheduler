@@ -1,6 +1,6 @@
 # 🦋 Bluesky AI Art Scheduler
 
-AI生成イラスト（WebP）をBlueskyに自動投稿するDenoツール
+AI生成イラスト（WebP/JPEG/PNG）をBlueskyに自動投稿するDenoツール
 
 ## 🚀 セットアップ
 
@@ -22,7 +22,7 @@ BLUESKY_PASSWORD=your-app-password
 3. 生成されたパスワードを`.env`ファイルに記入
 
 ### 3. 画像配置
-WebP画像を `queue/` フォルダに配置
+対応画像（WebP/JPEG/PNG）を `queue/` フォルダに配置
 
 ## 📦 使用方法
 
@@ -56,7 +56,7 @@ deno-bluesky-scheduler/
 │   ├── file-manager.ts    # ファイル管理
 │   └── poster.ts          # 投稿実行
 ├── tests/                 # テストファイル
-├── queue/                 # 投稿待ちWebP画像
+├── queue/                 # 投稿待ち画像（WebP/JPEG/PNG）
 ├── posted/               # 投稿済み画像（1週間後削除）
 ├── .env                  # 環境変数設定（要作成）
 ├── .env.example          # 環境変数テンプレート
@@ -104,7 +104,7 @@ deno test tests/file-manager.test.ts --allow-read --allow-write
 ## 🔧 動作の流れ
 
 1. **クリーンアップ**: `posted/` の1週間以上古いファイルを削除
-2. **ファイル選択**: `queue/` からWebPファイルをランダム選択
+2. **ファイル選択**: `queue/` から対応画像をランダム選択
 3. **投稿**: Blueskyに "#AIart" で投稿
 4. **移動**: 投稿成功時に `posted/` へファイル移動
 

@@ -21,7 +21,7 @@ class MockBlueskyClient {
 class MockFileManager {
   constructor(public queueDir: string, public postedDir: string) {}
   
-  async getRandomWebPFile(): Promise<string | null> {
+  async getRandomImageFile(): Promise<string | null> {
     return "./test-queue/mock-image.webp";
   }
   
@@ -37,8 +37,12 @@ class MockFileManager {
     // モック: ディレクトリ作成
   }
   
-  async getQueueStats(): Promise<{ webpCount: number; totalFiles: number }> {
-    return { webpCount: 1, totalFiles: 1 };
+  async getQueueStats(): Promise<{ imageCount: number; totalFiles: number; byExtension: Record<string, number> }> {
+    return { imageCount: 1, totalFiles: 1, byExtension: { '.webp': 1 } };
+  }
+  
+  getSupportedExtensions(): string[] {
+    return ['.webp', '.jpg', '.jpeg', '.png'];
   }
 }
 
@@ -71,11 +75,12 @@ Deno.test("Poster - no images in queue", async () => {
   
   // 空のファイルマネージャーモック
   const emptyFileManager = {
-    async getRandomWebPFile() { return null; },
+    async getRandomImageFile() { return null; },
     async moveToPosted() {},
     async cleanupOldFiles() {},
     async ensureDirectories() {},
-    async getQueueStats() { return { webpCount: 0, totalFiles: 0 }; }
+    async getQueueStats() { return { imageCount: 0, totalFiles: 0, byExtension: {} }; },
+    getSupportedExtensions() { return ['.webp', '.jpg', '.jpeg', '.png']; }
   };
   
   const poster = new Poster(
@@ -87,7 +92,7 @@ Deno.test("Poster - no images in queue", async () => {
   const result = await poster.executePost();
   
   assertEquals(result.success, false);
-  assertEquals(result.message, "No WebP images found in queue");
+  assert(result.message.includes("No supported images found in queue"));
 });
 
 Deno.test("Poster - authentication failure", async () => {
@@ -99,11 +104,12 @@ Deno.test("Poster - authentication failure", async () => {
   };
   
   const mockFileManager = {
-    async getRandomWebPFile() { return "./test-queue/mock.webp"; },
+    async getRandomImageFile() { return "./test-queue/mock.webp"; },
     async moveToPosted() {},
     async cleanupOldFiles() {},
     async ensureDirectories() {},
-    async getQueueStats() { return { webpCount: 1, totalFiles: 1 }; }
+    async getQueueStats() { return { imageCount: 1, totalFiles: 1, byExtension: { '.webp': 1 } }; },
+    getSupportedExtensions() { return ['.webp', '.jpg', '.jpeg', '.png']; }
   };
   
   // テスト用ファイル作成
@@ -130,14 +136,15 @@ Deno.test("Poster - cleanup old files", async () => {
   
   let cleanupCalled = false;
   const trackingFileManager = {
-    async getRandomWebPFile() { return "./test-queue/mock.webp"; },
+    async getRandomImageFile() { return "./test-queue/mock.webp"; },
     async moveToPosted() {},
     async cleanupOldFiles(days: number) {
       cleanupCalled = true;
       assertEquals(days, 7);
     },
     async ensureDirectories() {},
-    async getQueueStats() { return { webpCount: 1, totalFiles: 1 }; }
+    async getQueueStats() { return { imageCount: 1, totalFiles: 1, byExtension: { '.webp': 1 } }; },
+    getSupportedExtensions() { return ['.webp', '.jpg', '.jpeg', '.png']; }
   };
   
   const poster = new Poster(

@@ -7,7 +7,7 @@ export class FileManager {
     private readonly postedDir: string
   ) {}
 
-  async getRandomWebPFile(): Promise<string | null> {
+  async getRandomImageFile(): Promise<string | null> {
     try {
       // queueディレクトリの存在確認
       if (!(await exists(this.queueDir))) {
@@ -16,13 +16,19 @@ export class FileManager {
 
       // ディレクトリ内のファイル一覧取得
       const files: string[] = [];
+      const supportedExtensions = ['.webp', '.jpg', '.jpeg', '.png'];
+      
       for await (const entry of Deno.readDir(this.queueDir)) {
-        if (entry.isFile && entry.name.toLowerCase().endsWith('.webp')) {
-          files.push(join(this.queueDir, entry.name));
+        if (entry.isFile) {
+          const fileName = entry.name.toLowerCase();
+          const isSupported = supportedExtensions.some(ext => fileName.endsWith(ext));
+          if (isSupported) {
+            files.push(join(this.queueDir, entry.name));
+          }
         }
       }
 
-      // WebPファイルがない場合
+      // サポート対象ファイルがない場合
       if (files.length === 0) {
         return null;
       }
@@ -31,7 +37,7 @@ export class FileManager {
       const randomIndex = Math.floor(Math.random() * files.length);
       return files[randomIndex];
     } catch (error) {
-      console.error("Error getting random WebP file:", error);
+      console.error("Error getting random image file:", error);
       return null;
     }
   }
@@ -109,28 +115,40 @@ export class FileManager {
     }
   }
 
-  async getQueueStats(): Promise<{ webpCount: number; totalFiles: number }> {
+  async getQueueStats(): Promise<{ imageCount: number; totalFiles: number; byExtension: Record<string, number> }> {
     try {
       if (!(await exists(this.queueDir))) {
-        return { webpCount: 0, totalFiles: 0 };
+        return { imageCount: 0, totalFiles: 0, byExtension: {} };
       }
 
-      let webpCount = 0;
+      const supportedExtensions = ['.webp', '.jpg', '.jpeg', '.png'];
+      let imageCount = 0;
       let totalFiles = 0;
+      const byExtension: Record<string, number> = {};
 
       for await (const entry of Deno.readDir(this.queueDir)) {
         if (entry.isFile) {
           totalFiles++;
-          if (entry.name.toLowerCase().endsWith('.webp')) {
-            webpCount++;
+          const fileName = entry.name.toLowerCase();
+          const extension = supportedExtensions.find(ext => fileName.endsWith(ext));
+          
+          if (extension) {
+            imageCount++;
+            // .jpg と .jpeg を統一
+            const normalizedExt = extension === '.jpeg' ? '.jpg' : extension;
+            byExtension[normalizedExt] = (byExtension[normalizedExt] || 0) + 1;
           }
         }
       }
 
-      return { webpCount, totalFiles };
+      return { imageCount, totalFiles, byExtension };
     } catch (error) {
       console.error("Error getting queue stats:", error);
-      return { webpCount: 0, totalFiles: 0 };
+      return { imageCount: 0, totalFiles: 0, byExtension: {} };
     }
+  }
+
+  getSupportedExtensions(): string[] {
+    return ['.webp', '.jpg', '.jpeg', '.png'];
   }
 }

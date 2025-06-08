@@ -33,21 +33,25 @@ export class Poster {
 
       // 3. キューの状態確認
       const stats = await this.fileManager.getQueueStats();
-      console.log(`Queue stats: ${stats.webpCount} WebP files, ${stats.totalFiles} total files`);
+      const extensionInfo = Object.entries(stats.byExtension)
+        .map(([ext, count]) => `${count}${ext}`)
+        .join(', ') || 'none';
+      console.log(`Queue stats: ${stats.imageCount} images (${extensionInfo}), ${stats.totalFiles} total files`);
 
-      if (stats.webpCount === 0) {
+      if (stats.imageCount === 0) {
+        const supportedExts = this.fileManager.getSupportedExtensions().join(', ');
         return {
           success: false,
-          message: "No WebP images found in queue",
+          message: `No supported images found in queue. Supported formats: ${supportedExts}`,
         };
       }
 
-      // 4. ランダムにWebPファイルを選択
-      const selectedFile = await this.fileManager.getRandomWebPFile();
+      // 4. ランダムに画像ファイルを選択
+      const selectedFile = await this.fileManager.getRandomImageFile();
       if (!selectedFile) {
         return {
           success: false,
-          message: "Failed to select WebP file from queue",
+          message: "Failed to select image file from queue",
         };
       }
 
@@ -117,7 +121,7 @@ export class Poster {
   }
 
   async getStatus(): Promise<{
-    queueStats: { webpCount: number; totalFiles: number };
+    queueStats: { imageCount: number; totalFiles: number; byExtension: Record<string, number> };
     lastRunTime?: Date;
   }> {
     const queueStats = await this.fileManager.getQueueStats();

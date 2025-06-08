@@ -60,11 +60,15 @@ export class BlueskyClient {
       throw new Error("Not authenticated. Call authenticate() first.");
     }
 
+    // 画像形式を自動検出
+    const mimeType = this.detectImageMimeType(imageData);
+
     const response = await fetch(`${this.baseUrl}/xrpc/com.atproto.repo.uploadBlob`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${this.accessJwt}`,
-        "Content-Type": "image/webp",
+        "Content-Type": mimeType,
+        "Content-Length": imageData.length.toString(),
       },
       body: imageData,
     });
@@ -135,6 +139,35 @@ export class BlueskyClient {
 
     // 投稿作成
     return await this.createPost(text, blobResponse.blob);
+  }
+
+  private detectImageMimeType(imageData: Uint8Array): string {
+    // WebP: RIFF????WEBP
+    if (imageData.length >= 12 &&
+        imageData[0] === 0x52 && imageData[1] === 0x49 && 
+        imageData[2] === 0x46 && imageData[3] === 0x46 &&
+        imageData[8] === 0x57 && imageData[9] === 0x45 && 
+        imageData[10] === 0x42 && imageData[11] === 0x50) {
+      return "image/webp";
+    }
+    
+    // JPEG: FF D8 FF
+    if (imageData.length >= 3 &&
+        imageData[0] === 0xFF && imageData[1] === 0xD8 && imageData[2] === 0xFF) {
+      return "image/jpeg";
+    }
+    
+    // PNG: 89 50 4E 47 0D 0A 1A 0A
+    if (imageData.length >= 8 &&
+        imageData[0] === 0x89 && imageData[1] === 0x50 && 
+        imageData[2] === 0x4E && imageData[3] === 0x47 &&
+        imageData[4] === 0x0D && imageData[5] === 0x0A && 
+        imageData[6] === 0x1A && imageData[7] === 0x0A) {
+      return "image/png";
+    }
+    
+    // デフォルトはWebP（フォルダ名から推測）
+    return "image/webp";
   }
 
   private extractHashtags(text: string): any[] {

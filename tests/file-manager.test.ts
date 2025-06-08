@@ -3,24 +3,26 @@ import { exists } from "@std/fs";
 import { join } from "@std/path";
 import { FileManager } from "../core/file-manager.ts";
 
-Deno.test("FileManager - get random WebP file from queue", async () => {
+Deno.test("FileManager - get random image file from queue", async () => {
   const fileManager = new FileManager("./test-queue", "./test-posted");
   
   // テスト用ディレクトリ作成
   await Deno.mkdir("./test-queue", { recursive: true });
   await Deno.mkdir("./test-posted", { recursive: true });
   
-  // テスト用WebPファイル作成（ダミー）
+  // テスト用画像ファイル作成（ダミー）
   await Deno.writeFile("./test-queue/test1.webp", new Uint8Array([1, 2, 3]));
-  await Deno.writeFile("./test-queue/test2.webp", new Uint8Array([4, 5, 6]));
-  await Deno.writeFile("./test-queue/test3.jpg", new Uint8Array([7, 8, 9])); // WebPではない
+  await Deno.writeFile("./test-queue/test2.jpg", new Uint8Array([4, 5, 6]));
+  await Deno.writeFile("./test-queue/test3.png", new Uint8Array([7, 8, 9]));
+  await Deno.writeFile("./test-queue/test4.txt", new Uint8Array([10, 11, 12])); // 非対応形式
   
-  const randomFile = await fileManager.getRandomWebPFile();
+  const randomFile = await fileManager.getRandomImageFile();
   
-  // WebPファイルが選択されることを確認
+  // 対応画像ファイルが選択されることを確認
   assert(randomFile !== null);
-  assert(randomFile!.endsWith(".webp"));
-  assert(randomFile!.includes("test1.webp") || randomFile!.includes("test2.webp"));
+  const supportedExts = ['.webp', '.jpg', '.png'];
+  const isSupported = supportedExts.some(ext => randomFile!.endsWith(ext));
+  assert(isSupported);
   
   // クリーンアップ
   await Deno.remove("./test-queue", { recursive: true });
@@ -85,16 +87,41 @@ Deno.test("FileManager - cleanup old files", async () => {
   await Deno.remove("./test-posted", { recursive: true });
 });
 
-Deno.test("FileManager - no WebP files in queue", async () => {
+Deno.test("FileManager - no image files in queue", async () => {
   const fileManager = new FileManager("./test-empty-queue", "./test-posted");
   
   // 空のディレクトリ作成
   await Deno.mkdir("./test-empty-queue", { recursive: true });
   
-  const randomFile = await fileManager.getRandomWebPFile();
+  const randomFile = await fileManager.getRandomImageFile();
   
-  assertEquals(randomFile, null); // WebPファイルがない場合はnull
+  assertEquals(randomFile, null); // 対応画像ファイルがない場合はnull
   
   // クリーンアップ
   await Deno.remove("./test-empty-queue", { recursive: true });
+});
+
+Deno.test("FileManager - queue stats with mixed file types", async () => {
+  const fileManager = new FileManager("./test-mixed-queue", "./test-posted");
+  
+  // テスト用ディレクトリ作成
+  await Deno.mkdir("./test-mixed-queue", { recursive: true });
+  
+  // 様々な形式のファイル作成
+  await Deno.writeFile("./test-mixed-queue/image1.webp", new Uint8Array([1, 2, 3]));
+  await Deno.writeFile("./test-mixed-queue/image2.jpg", new Uint8Array([4, 5, 6]));
+  await Deno.writeFile("./test-mixed-queue/image3.jpeg", new Uint8Array([7, 8, 9]));
+  await Deno.writeFile("./test-mixed-queue/image4.png", new Uint8Array([10, 11, 12]));
+  await Deno.writeFile("./test-mixed-queue/document.txt", new Uint8Array([13, 14, 15]));
+  
+  const stats = await fileManager.getQueueStats();
+  
+  assertEquals(stats.imageCount, 4); // 4つの画像ファイル
+  assertEquals(stats.totalFiles, 5); // 5つの全ファイル
+  assertEquals(stats.byExtension['.webp'], 1);
+  assertEquals(stats.byExtension['.jpg'], 2); // .jpeg は .jpg に統一される
+  assertEquals(stats.byExtension['.png'], 1);
+  
+  // クリーンアップ
+  await Deno.remove("./test-mixed-queue", { recursive: true });
 });

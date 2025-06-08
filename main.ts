@@ -116,10 +116,11 @@ async function main() {
 
     // ステータス確認
     const status = await poster.getStatus();
-    console.log(`📊 Queue status: ${status.queueStats.webpCount} WebP files ready`);
+    console.log(`📊 Queue status: ${status.queueStats.imageCount} images ready`);
 
-    if (status.queueStats.webpCount === 0) {
-      console.log("📁 No WebP images in queue. Add some images to ./queue/ and try again.");
+    if (status.queueStats.imageCount === 0) {
+      const supportedExts = fileManager.getSupportedExtensions().join(', ');
+      console.log(`📁 No images in queue. Add some images (${supportedExts}) to ./queue/ and try again.`);
       Deno.exit(0);
     }
 
@@ -190,8 +191,17 @@ if (args.includes("--status") || args.includes("-s")) {
     const stats = await fileManager.getQueueStats();
     
     console.log("📊 Queue Status:");
-    console.log(`   WebP files: ${stats.webpCount}`);
+    console.log(`   Image files: ${stats.imageCount}`);
     console.log(`   Total files: ${stats.totalFiles}`);
+    
+    // 拡張子別の詳細表示
+    if (Object.keys(stats.byExtension).length > 0) {
+      const extensionDetails = Object.entries(stats.byExtension)
+        .map(([ext, count]) => `${ext}: ${count}`)
+        .join(', ');
+      console.log(`   By format: ${extensionDetails}`);
+    }
+    
     console.log(`   Queue directory: ${config.directories.queue}`);
     console.log(`   Posted directory: ${config.directories.posted}`);
     console.log(`   Bluesky account: ${config.bluesky.identifier}`);

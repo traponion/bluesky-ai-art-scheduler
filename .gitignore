@@ -4,6 +4,7 @@
 # 投稿待ち・投稿済み画像
 queue/*.webp
 queue/*.jpg
+queue/*.jpeg
 queue/*.png
 posted/
 
