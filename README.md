@@ -77,6 +77,19 @@ BLUESKY_PASSWORD=your-app-password
 ```env
 POST_TEXT="#AIart #illustration"
 CLEANUP_DAYS=14
+QUEUE_DIR="/path/to/your/queue"
+POSTED_DIR="/path/to/your/posted"
+```
+
+**クラウドストレージ連動例：**
+```env
+# Google Drive
+QUEUE_DIR="/mnt/gdrive/ai-art/queue"
+POSTED_DIR="/mnt/gdrive/ai-art/posted"
+
+# MEGA
+QUEUE_DIR="/home/user/MEGA/bluesky-queue"
+POSTED_DIR="/home/user/MEGA/bluesky-posted"
 ```
 
 ## 🧪 テスト実行

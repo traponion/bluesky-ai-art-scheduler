@@ -27,7 +27,13 @@ async function loadEnv(): Promise<{ identifier: string; password: string }> {
       if (trimmed && !trimmed.startsWith("#")) {
         const [key, ...valueParts] = trimmed.split("=");
         if (key && valueParts.length > 0) {
-          envVars[key] = valueParts.join("=");
+          // クォートを除去
+          let value = valueParts.join("=");
+          if ((value.startsWith('"') && value.endsWith('"')) || 
+              (value.startsWith("'") && value.endsWith("'"))) {
+            value = value.slice(1, -1);
+          }
+          envVars[key] = value;
         }
       }
     }
@@ -66,6 +72,15 @@ async function loadConfig(): Promise<Config> {
   
   if (Deno.env.get("CLEANUP_DAYS")) {
     config.post.cleanupDays = parseInt(Deno.env.get("CLEANUP_DAYS")!);
+  }
+
+  // ディレクトリパスの環境変数上書き
+  if (Deno.env.get("QUEUE_DIR")) {
+    config.directories.queue = Deno.env.get("QUEUE_DIR")!;
+  }
+  
+  if (Deno.env.get("POSTED_DIR")) {
+    config.directories.posted = Deno.env.get("POSTED_DIR")!;
   }
 
   return config;
