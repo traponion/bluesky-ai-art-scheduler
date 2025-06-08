@@ -16,6 +16,13 @@ class MockBlueskyClient {
       cid: "mock-cid"
     };
   }
+  
+  async postWithImageWithAspectRatio(imageData: Uint8Array, text: string) {
+    return { 
+      uri: "at://did:plc:test/app.bsky.feed.post/mock",
+      cid: "mock-cid"
+    };
+  }
 }
 
 class MockFileManager {
@@ -99,6 +106,9 @@ Deno.test("Poster - authentication failure", async () => {
   // 認証失敗するモッククライアント
   const failingClient = {
     async postWithImage() {
+      throw new Error("Authentication failed");
+    },
+    async postWithImageWithAspectRatio() {
       throw new Error("Authentication failed");
     }
   };

@@ -1,3 +1,5 @@
+import { ImageDimensionsDetector, type ImageDimensions, type AspectRatio } from "./image-dimensions.ts";
+
 export interface AuthResponse {
   accessJwt: string;
   did: string;
@@ -23,6 +25,7 @@ export class BlueskyClient {
   private accessJwt: string | null = null;
   private did: string | null = null;
   private readonly baseUrl = "https://bsky.social";
+  private readonly dimensionsDetector = new ImageDimensionsDetector();
 
   constructor(
     public readonly identifier: string,
@@ -80,7 +83,7 @@ export class BlueskyClient {
     return await response.json();
   }
 
-  async createPost(text: string, imageBlob?: BlobResponse["blob"]): Promise<PostResponse> {
+  async createPost(text: string, imageBlob?: BlobResponse["blob"], aspectRatio?: AspectRatio): Promise<PostResponse> {
     if (!this.accessJwt || !this.did) {
       throw new Error("Not authenticated. Call authenticate() first.");
     }
@@ -99,14 +102,22 @@ export class BlueskyClient {
     }
 
     if (imageBlob) {
+      const imageData: any = {
+        alt: "",
+        image: imageBlob,
+      };
+
+      // aspectRatioが指定されている場合は追加
+      if (aspectRatio) {
+        imageData.aspectRatio = {
+          width: aspectRatio.width,
+          height: aspectRatio.height,
+        };
+      }
+
       record.embed = {
         $type: "app.bsky.embed.images",
-        images: [
-          {
-            alt: "",
-            image: imageBlob,
-          },
-        ],
+        images: [imageData],
       };
     }
 
@@ -139,6 +150,29 @@ export class BlueskyClient {
 
     // 投稿作成
     return await this.createPost(text, blobResponse.blob);
+  }
+
+  async postWithImageWithAspectRatio(imageData: Uint8Array, text: string): Promise<PostResponse> {
+    // 認証
+    await this.authenticate();
+
+    // 画像サイズを取得
+    let aspectRatio: AspectRatio | undefined;
+    try {
+      const dimensions = this.dimensionsDetector.getImageDimensions(imageData);
+      aspectRatio = this.dimensionsDetector.calculateAspectRatio(dimensions.width, dimensions.height);
+      console.log(`Image dimensions: ${dimensions.width}x${dimensions.height} (${dimensions.format})`);
+      console.log(`Aspect ratio: ${aspectRatio.width}:${aspectRatio.height}`);
+    } catch (error) {
+      console.warn(`Could not detect image dimensions: ${error instanceof Error ? error.message : String(error)}`);
+      // サイズ取得に失敗してもpostは続行
+    }
+
+    // 画像アップロード
+    const blobResponse = await this.uploadImage(imageData);
+
+    // aspectRatio付きで投稿作成
+    return await this.createPost(text, blobResponse.blob, aspectRatio);
   }
 
   private detectImageMimeType(imageData: Uint8Array): string {

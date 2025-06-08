@@ -61,9 +61,9 @@ export class Poster {
       const imageData = await Deno.readFile(selectedFile);
       console.log(`Read file: ${imageData.length} bytes`);
 
-      // 6. Blueskyに投稿
-      console.log("Posting to Bluesky...");
-      const postResponse = await this.blueskyClient.postWithImage(imageData, this.config.text);
+      // 6. Blueskyに投稿（aspectRatio付き）
+      console.log("Posting to Bluesky with aspectRatio...");
+      const postResponse = await this.blueskyClient.postWithImageWithAspectRatio(imageData, this.config.text);
       console.log(`Post successful: ${postResponse.uri}`);
 
       // 7. ファイルをpostedディレクトリに移動
