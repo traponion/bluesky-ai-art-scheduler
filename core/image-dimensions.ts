@@ -1,3 +1,5 @@
+import { IMAGE_SIGNATURES } from "./constants.ts";
+
 export interface ImageDimensions {
   width: number;
   height: number;
@@ -10,32 +12,66 @@ export interface AspectRatio {
 }
 
 export class ImageDimensionsDetector {
+  // ファイル形式判定用のユーティリティメソッド
+  detectFormat(imageData: Uint8Array): 'webp' | 'jpeg' | 'png' | null {
+    if (this.isWebP(imageData)) return 'webp';
+    if (this.isJPEG(imageData)) return 'jpeg';
+    if (this.isPNG(imageData)) return 'png';
+    return null;
+  }
   getImageDimensions(imageData: Uint8Array): ImageDimensions {
-    // WebP: RIFF????WEBP
-    if (imageData.length >= 12 &&
-        imageData[0] === 0x52 && imageData[1] === 0x49 && 
-        imageData[2] === 0x46 && imageData[3] === 0x46 &&
-        imageData[8] === 0x57 && imageData[9] === 0x45 && 
-        imageData[10] === 0x42 && imageData[11] === 0x50) {
+    // WebP検出
+    if (this.isWebP(imageData)) {
       return this.getWebPDimensions(imageData);
     }
     
-    // JPEG: FF D8 FF
-    if (imageData.length >= 3 &&
-        imageData[0] === 0xFF && imageData[1] === 0xD8 && imageData[2] === 0xFF) {
+    // JPEG検出
+    if (this.isJPEG(imageData)) {
       return this.getJpegDimensions(imageData);
     }
     
-    // PNG: 89 50 4E 47 0D 0A 1A 0A
-    if (imageData.length >= 24 &&
-        imageData[0] === 0x89 && imageData[1] === 0x50 && 
-        imageData[2] === 0x4E && imageData[3] === 0x47 &&
-        imageData[4] === 0x0D && imageData[5] === 0x0A && 
-        imageData[6] === 0x1A && imageData[7] === 0x0A) {
+    // PNG検出
+    if (this.isPNG(imageData)) {
       return this.getPngDimensions(imageData);
     }
     
     throw new Error('Unsupported image format for dimension detection');
+  }
+
+  private isWebP(imageData: Uint8Array): boolean {
+    if (imageData.length < IMAGE_SIGNATURES.WEBP.MIN_SIZE) return false;
+    
+    // RIFF header check
+    for (let i = 0; i < IMAGE_SIGNATURES.WEBP.HEADER.length; i++) {
+      if (imageData[i] !== IMAGE_SIGNATURES.WEBP.HEADER[i]) return false;
+    }
+    
+    // WEBP format check
+    for (let i = 0; i < IMAGE_SIGNATURES.WEBP.FORMAT.length; i++) {
+      if (imageData[8 + i] !== IMAGE_SIGNATURES.WEBP.FORMAT[i]) return false;
+    }
+    
+    return true;
+  }
+
+  private isJPEG(imageData: Uint8Array): boolean {
+    if (imageData.length < IMAGE_SIGNATURES.JPEG.MIN_SIZE) return false;
+    
+    for (let i = 0; i < IMAGE_SIGNATURES.JPEG.HEADER.length; i++) {
+      if (imageData[i] !== IMAGE_SIGNATURES.JPEG.HEADER[i]) return false;
+    }
+    
+    return true;
+  }
+
+  private isPNG(imageData: Uint8Array): boolean {
+    if (imageData.length < IMAGE_SIGNATURES.PNG.MIN_SIZE) return false;
+    
+    for (let i = 0; i < IMAGE_SIGNATURES.PNG.HEADER.length; i++) {
+      if (imageData[i] !== IMAGE_SIGNATURES.PNG.HEADER[i]) return false;
+    }
+    
+    return true;
   }
 
   private getWebPDimensions(imageData: Uint8Array): ImageDimensions {

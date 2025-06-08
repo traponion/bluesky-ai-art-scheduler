@@ -1,4 +1,6 @@
 import { ImageDimensionsDetector, type ImageDimensions, type AspectRatio } from "./image-dimensions.ts";
+import { BLUESKY_BASE_URL } from "./constants.ts";
+import { NetworkError } from "./error-handler.ts";
 
 export interface AuthResponse {
   accessJwt: string;
@@ -24,7 +26,7 @@ export interface BlobResponse {
 export class BlueskyClient {
   private accessJwt: string | null = null;
   private did: string | null = null;
-  private readonly baseUrl = "https://bsky.social";
+  private readonly baseUrl = BLUESKY_BASE_URL;
   private readonly dimensionsDetector = new ImageDimensionsDetector();
 
   constructor(
@@ -45,7 +47,11 @@ export class BlueskyClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Authentication failed: ${response.status} ${response.statusText}`);
+      throw new NetworkError(
+        `Authentication failed: ${response.status} ${response.statusText}`,
+        `${this.baseUrl}/xrpc/com.atproto.server.createSession`,
+        response.status
+      );
     }
 
     const data = await response.json();
@@ -77,7 +83,11 @@ export class BlueskyClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Image upload failed: ${response.status} ${response.statusText}`);
+      throw new NetworkError(
+        `Image upload failed: ${response.status} ${response.statusText}`,
+        `${this.baseUrl}/xrpc/com.atproto.repo.uploadBlob`,
+        response.status
+      );
     }
 
     return await response.json();
@@ -135,7 +145,11 @@ export class BlueskyClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Post creation failed: ${response.status} ${response.statusText}`);
+      throw new NetworkError(
+        `Post creation failed: ${response.status} ${response.statusText}`,
+        `${this.baseUrl}/xrpc/com.atproto.repo.createRecord`,
+        response.status
+      );
     }
 
     return await response.json();
@@ -176,32 +190,19 @@ export class BlueskyClient {
   }
 
   private detectImageMimeType(imageData: Uint8Array): string {
-    // WebP: RIFF????WEBP
-    if (imageData.length >= 12 &&
-        imageData[0] === 0x52 && imageData[1] === 0x49 && 
-        imageData[2] === 0x46 && imageData[3] === 0x46 &&
-        imageData[8] === 0x57 && imageData[9] === 0x45 && 
-        imageData[10] === 0x42 && imageData[11] === 0x50) {
-      return "image/webp";
-    }
+    const format = this.dimensionsDetector.detectFormat(imageData);
     
-    // JPEG: FF D8 FF
-    if (imageData.length >= 3 &&
-        imageData[0] === 0xFF && imageData[1] === 0xD8 && imageData[2] === 0xFF) {
-      return "image/jpeg";
+    switch (format) {
+      case 'webp':
+        return "image/webp";
+      case 'jpeg':
+        return "image/jpeg";
+      case 'png':
+        return "image/png";
+      default:
+        // フォールバック（未知の形式の場合）
+        return "image/webp";
     }
-    
-    // PNG: 89 50 4E 47 0D 0A 1A 0A
-    if (imageData.length >= 8 &&
-        imageData[0] === 0x89 && imageData[1] === 0x50 && 
-        imageData[2] === 0x4E && imageData[3] === 0x47 &&
-        imageData[4] === 0x0D && imageData[5] === 0x0A && 
-        imageData[6] === 0x1A && imageData[7] === 0x0A) {
-      return "image/png";
-    }
-    
-    // デフォルトはWebP（フォルダ名から推測）
-    return "image/webp";
   }
 
   private extractHashtags(text: string): any[] {

@@ -1,5 +1,7 @@
 import { join, basename } from "@std/path";
 import { exists } from "@std/fs";
+import { SUPPORTED_IMAGE_EXTENSIONS } from "./constants.ts";
+import { ErrorHandler, FileSystemError } from "./error-handler.ts";
 
 export class FileManager {
   constructor(
@@ -16,12 +18,11 @@ export class FileManager {
 
       // ディレクトリ内のファイル一覧取得
       const files: string[] = [];
-      const supportedExtensions = ['.webp', '.jpg', '.jpeg', '.png'];
       
       for await (const entry of Deno.readDir(this.queueDir)) {
         if (entry.isFile) {
           const fileName = entry.name.toLowerCase();
-          const isSupported = supportedExtensions.some(ext => fileName.endsWith(ext));
+          const isSupported = SUPPORTED_IMAGE_EXTENSIONS.some(ext => fileName.endsWith(ext));
           if (isSupported) {
             files.push(join(this.queueDir, entry.name));
           }
@@ -37,7 +38,8 @@ export class FileManager {
       const randomIndex = Math.floor(Math.random() * files.length);
       return files[randomIndex];
     } catch (error) {
-      console.error("Error getting random image file:", error);
+      const appError = ErrorHandler.handle(error, 'getRandomImageFile');
+      ErrorHandler.log(appError);
       return null;
     }
   }
@@ -87,7 +89,12 @@ export class FileManager {
               console.log(`Deleted old file: ${entry.name}`);
             }
           } catch (error) {
-            console.error(`Error checking file ${entry.name}:`, error);
+            const appError = new FileSystemError(
+              `Error checking file ${entry.name}`,
+              filePath,
+              'stat'
+            );
+            ErrorHandler.log(appError);
           }
         }
       }
@@ -96,7 +103,8 @@ export class FileManager {
         console.log(`Cleaned up ${deletedCount} old files`);
       }
     } catch (error) {
-      console.error("Error during cleanup:", error);
+      const appError = ErrorHandler.handle(error, 'cleanupOldFiles');
+      ErrorHandler.log(appError);
     }
   }
 
@@ -111,7 +119,13 @@ export class FileManager {
         await Deno.mkdir(this.postedDir, { recursive: true });
       }
     } catch (error) {
-      throw new Error(`Failed to create directories: ${error instanceof Error ? error.message : String(error)}`);
+      const appError = new FileSystemError(
+        `Failed to create directories: ${error instanceof Error ? error.message : String(error)}`,
+        `${this.queueDir}, ${this.postedDir}`,
+        'mkdir'
+      );
+      ErrorHandler.log(appError);
+      throw appError;
     }
   }
 
@@ -121,7 +135,6 @@ export class FileManager {
         return { imageCount: 0, totalFiles: 0, byExtension: {} };
       }
 
-      const supportedExtensions = ['.webp', '.jpg', '.jpeg', '.png'];
       let imageCount = 0;
       let totalFiles = 0;
       const byExtension: Record<string, number> = {};
@@ -130,7 +143,7 @@ export class FileManager {
         if (entry.isFile) {
           totalFiles++;
           const fileName = entry.name.toLowerCase();
-          const extension = supportedExtensions.find(ext => fileName.endsWith(ext));
+          const extension = SUPPORTED_IMAGE_EXTENSIONS.find(ext => fileName.endsWith(ext));
           
           if (extension) {
             imageCount++;
@@ -143,12 +156,13 @@ export class FileManager {
 
       return { imageCount, totalFiles, byExtension };
     } catch (error) {
-      console.error("Error getting queue stats:", error);
+      const appError = ErrorHandler.handle(error, 'getQueueStats');
+      ErrorHandler.log(appError);
       return { imageCount: 0, totalFiles: 0, byExtension: {} };
     }
   }
 
   getSupportedExtensions(): string[] {
-    return ['.webp', '.jpg', '.jpeg', '.png'];
+    return [...SUPPORTED_IMAGE_EXTENSIONS];
   }
 }

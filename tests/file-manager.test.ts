@@ -2,6 +2,7 @@ import { assertEquals, assert } from "@std/assert";
 import { exists } from "@std/fs";
 import { join } from "@std/path";
 import { FileManager } from "../core/file-manager.ts";
+import { SUPPORTED_IMAGE_EXTENSIONS } from "../core/constants.ts";
 
 Deno.test("FileManager - get random image file from queue", async () => {
   const fileManager = new FileManager("./test-queue", "./test-posted");
@@ -20,8 +21,7 @@ Deno.test("FileManager - get random image file from queue", async () => {
   
   // 対応画像ファイルが選択されることを確認
   assert(randomFile !== null);
-  const supportedExts = ['.webp', '.jpg', '.png'];
-  const isSupported = supportedExts.some(ext => randomFile!.endsWith(ext));
+  const isSupported = SUPPORTED_IMAGE_EXTENSIONS.some(ext => randomFile!.endsWith(ext));
   assert(isSupported);
   
   // クリーンアップ

@@ -4,6 +4,13 @@ import { exists } from "@std/fs";
 import { BlueskyClient } from "./core/bluesky-client.ts";
 import { FileManager } from "./core/file-manager.ts";
 import { Poster } from "./core/poster.ts";
+import { 
+  DEFAULT_CLEANUP_DAYS, 
+  DEFAULT_POST_TEXT, 
+  DEFAULT_QUEUE_DIR, 
+  DEFAULT_POSTED_DIR,
+  ENV_KEYS 
+} from "./core/constants.ts";
 
 interface AppConfig {
   bluesky: {
@@ -55,11 +62,11 @@ async function loadAppConfig(): Promise<AppConfig> {
   };
   
   // 必須設定のチェック
-  const identifier = getEnvValue("BLUESKY_IDENTIFIER");
-  const password = getEnvValue("BLUESKY_PASSWORD");
+  const identifier = getEnvValue(ENV_KEYS.BLUESKY_IDENTIFIER);
+  const password = getEnvValue(ENV_KEYS.BLUESKY_PASSWORD);
   
   if (!identifier || !password) {
-    throw new Error("BLUESKY_IDENTIFIER and BLUESKY_PASSWORD are required in .env file or environment variables");
+    throw new Error(`${ENV_KEYS.BLUESKY_IDENTIFIER} and ${ENV_KEYS.BLUESKY_PASSWORD} are required in .env file or environment variables`);
   }
   
   // デフォルト値ありの設定
@@ -69,12 +76,12 @@ async function loadAppConfig(): Promise<AppConfig> {
       password,
     },
     post: {
-      text: getEnvValue("POST_TEXT") || "#AIart",
-      cleanupDays: parseInt(getEnvValue("CLEANUP_DAYS") || "7"),
+      text: getEnvValue(ENV_KEYS.POST_TEXT) || DEFAULT_POST_TEXT,
+      cleanupDays: parseInt(getEnvValue(ENV_KEYS.CLEANUP_DAYS) || DEFAULT_CLEANUP_DAYS.toString()),
     },
     directories: {
-      queue: getEnvValue("QUEUE_DIR") || "./queue",
-      posted: getEnvValue("POSTED_DIR") || "./posted",
+      queue: getEnvValue(ENV_KEYS.QUEUE_DIR) || DEFAULT_QUEUE_DIR,
+      posted: getEnvValue(ENV_KEYS.POSTED_DIR) || DEFAULT_POSTED_DIR,
     },
   };
   

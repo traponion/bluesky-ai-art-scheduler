@@ -1,6 +1,7 @@
 import { assertEquals, assert } from "@std/assert";
 import { exists } from "@std/fs";
 import { Poster } from "../core/poster.ts";
+import { SUPPORTED_IMAGE_EXTENSIONS } from "../core/constants.ts";
 
 // モッククラス
 class MockBlueskyClient {
@@ -49,7 +50,7 @@ class MockFileManager {
   }
   
   getSupportedExtensions(): string[] {
-    return ['.webp', '.jpg', '.jpeg', '.png'];
+    return [...SUPPORTED_IMAGE_EXTENSIONS];
   }
 }
 
@@ -87,7 +88,7 @@ Deno.test("Poster - no images in queue", async () => {
     async cleanupOldFiles() {},
     async ensureDirectories() {},
     async getQueueStats() { return { imageCount: 0, totalFiles: 0, byExtension: {} }; },
-    getSupportedExtensions() { return ['.webp', '.jpg', '.jpeg', '.png']; }
+    getSupportedExtensions() { return [...SUPPORTED_IMAGE_EXTENSIONS]; }
   };
   
   const poster = new Poster(
@@ -119,7 +120,7 @@ Deno.test("Poster - authentication failure", async () => {
     async cleanupOldFiles() {},
     async ensureDirectories() {},
     async getQueueStats() { return { imageCount: 1, totalFiles: 1, byExtension: { '.webp': 1 } }; },
-    getSupportedExtensions() { return ['.webp', '.jpg', '.jpeg', '.png']; }
+    getSupportedExtensions() { return [...SUPPORTED_IMAGE_EXTENSIONS]; }
   };
   
   // テスト用ファイル作成
@@ -154,7 +155,7 @@ Deno.test("Poster - cleanup old files", async () => {
     },
     async ensureDirectories() {},
     async getQueueStats() { return { imageCount: 1, totalFiles: 1, byExtension: { '.webp': 1 } }; },
-    getSupportedExtensions() { return ['.webp', '.jpg', '.jpeg', '.png']; }
+    getSupportedExtensions() { return [...SUPPORTED_IMAGE_EXTENSIONS]; }
   };
   
   const poster = new Poster(

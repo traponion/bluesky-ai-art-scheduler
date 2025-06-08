@@ -1,5 +1,6 @@
 import { BlueskyClient } from "./bluesky-client.ts";
 import { FileManager } from "./file-manager.ts";
+import { MAX_FILE_SIZE } from "./constants.ts";
 
 export interface PostConfig {
   text: string;
@@ -62,9 +63,8 @@ export class Poster {
       console.log(`Read file: ${imageData.length} bytes`);
 
       // 6. ファイルサイズチェック（1MB = 1,000,000バイト制限）
-      const maxFileSize = 1000000; // 1MB
-      if (imageData.length > maxFileSize) {
-        console.warn(`File size too large: ${imageData.length} bytes (max: ${maxFileSize} bytes)`);
+      if (imageData.length > MAX_FILE_SIZE) {
+        console.warn(`File size too large: ${imageData.length} bytes (max: ${MAX_FILE_SIZE} bytes)`);
         console.log("Moving oversized file to posted directory...");
         
         // ファイルをpostedディレクトリに移動
