@@ -174,3 +174,72 @@ Deno.test("Poster - cleanup old files", async () => {
   // クリーンアップ
   await Deno.remove("./test-queue", { recursive: true }).catch(() => {});
 });
+
+Deno.test("Poster - file size limit exceeded", async () => {
+  const mockClient = new MockBlueskyClient("test.bsky.social", "test-password");
+  
+  // 実際のFileManagerを使用
+  const { FileManager } = await import("../core/file-manager.ts");
+  const fileManager = new FileManager("./test-queue-large", "./test-posted-large");
+  
+  const poster = new Poster(
+    mockClient as any,
+    fileManager as any,
+    { text: "#AIart", cleanupDays: 7 }
+  );
+  
+  // 1MB超過の大きなファイルを作成（1,500,000バイト）
+  await Deno.mkdir("./test-queue-large", { recursive: true });
+  await Deno.mkdir("./test-posted-large", { recursive: true });
+  
+  const largeImageData = new Uint8Array(1500000); // 1.5MB
+  largeImageData.fill(42); // データで埋める
+  await Deno.writeFile("./test-queue-large/large-image.webp", largeImageData);
+  
+  const result = await poster.executePost();
+  
+  // 処理は成功扱いだが、ファイルサイズ超過のメッセージ
+  assertEquals(result.success, true);
+  assert(result.message.includes("File size too large"));
+  assert(result.message.includes("moved to posted"));
+  
+  // ファイルがpostedディレクトリに移動されている
+  const fileExists = await Deno.stat("./test-posted-large/large-image.webp").then(() => true).catch(() => false);
+  assertEquals(fileExists, true);
+  
+  // クリーンアップ
+  await Deno.remove("./test-queue-large", { recursive: true }).catch(() => {});
+  await Deno.remove("./test-posted-large", { recursive: true }).catch(() => {});
+});
+
+Deno.test("Poster - file size within limit", async () => {
+  const mockClient = new MockBlueskyClient("test.bsky.social", "test-password");
+  
+  // 実際のFileManagerを使用
+  const { FileManager } = await import("../core/file-manager.ts");
+  const fileManager = new FileManager("./test-queue-small", "./test-posted-small");
+  
+  const poster = new Poster(
+    mockClient as any,
+    fileManager as any,
+    { text: "#AIart", cleanupDays: 7 }
+  );
+  
+  // 1MB以下の小さなファイルを作成（500,000バイト）
+  await Deno.mkdir("./test-queue-small", { recursive: true });
+  await Deno.mkdir("./test-posted-small", { recursive: true });
+  
+  const smallImageData = new Uint8Array(500000); // 500KB
+  smallImageData.fill(42);
+  await Deno.writeFile("./test-queue-small/small-image.webp", smallImageData);
+  
+  const result = await poster.executePost();
+  
+  // 正常に投稿処理される
+  assertEquals(result.success, true);
+  assertEquals(result.message, "Posted successfully");
+  
+  // クリーンアップ
+  await Deno.remove("./test-queue-small", { recursive: true }).catch(() => {});
+  await Deno.remove("./test-posted-small", { recursive: true }).catch(() => {});
+});

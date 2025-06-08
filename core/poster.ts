@@ -61,12 +61,28 @@ export class Poster {
       const imageData = await Deno.readFile(selectedFile);
       console.log(`Read file: ${imageData.length} bytes`);
 
-      // 6. Blueskyに投稿（aspectRatio付き）
+      // 6. ファイルサイズチェック（1MB = 1,000,000バイト制限）
+      const maxFileSize = 1000000; // 1MB
+      if (imageData.length > maxFileSize) {
+        console.warn(`File size too large: ${imageData.length} bytes (max: ${maxFileSize} bytes)`);
+        console.log("Moving oversized file to posted directory...");
+        
+        // ファイルをpostedディレクトリに移動
+        await this.fileManager.moveToPosted(selectedFile);
+        
+        return {
+          success: true,
+          message: `File size too large (${imageData.length} bytes), moved to posted directory`,
+          fileName: selectedFile.split('/').pop(),
+        };
+      }
+
+      // 7. Blueskyに投稿（aspectRatio付き）
       console.log("Posting to Bluesky with aspectRatio...");
       const postResponse = await this.blueskyClient.postWithImageWithAspectRatio(imageData, this.config.text);
       console.log(`Post successful: ${postResponse.uri}`);
 
-      // 7. ファイルをpostedディレクトリに移動
+      // 8. ファイルをpostedディレクトリに移動
       await this.fileManager.moveToPosted(selectedFile);
 
       return {
