@@ -1,0 +1,30 @@
+# 環境変数ファイル
+.env
+
+# 投稿待ち・投稿済み画像
+queue/*.webp
+queue/*.jpg
+queue/*.png
+posted/
+
+# Deno
+.deno/
+deno.lock
+
+# エディタ
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ログファイル
+*.log
+
+# 一時ファイル
+tmp/
+temp/

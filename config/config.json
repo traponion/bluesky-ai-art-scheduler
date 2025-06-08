@@ -1,0 +1,10 @@
+{
+  "post": {
+    "text": "#AIart",
+    "cleanupDays": 7
+  },
+  "directories": {
+    "queue": "./queue",
+    "posted": "./posted"
+  }
+}
