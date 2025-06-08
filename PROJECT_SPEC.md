@@ -19,26 +19,25 @@ deno-bluesky-scheduler/
 │   ├── poster.ts          # メイン投稿ロジック
 │   ├── file-manager.ts    # ファイル管理・削除
 │   └── bluesky-client.ts  # Bluesky API接続
-├── config/
-│   └── config.json        # 設定ファイル
 ├── queue/                 # 投稿待ちWebP画像
 ├── posted/               # 投稿済み画像（1週間保持）
 ├── tests/                # テストファイル
+├── .env                  # 環境変数設定
+├── .env.example          # 環境変数テンプレート
 └── main.ts               # エントリーポイント
 ```
 
-### 設定ファイル
-```json
-{
-  "bluesky": {
-    "identifier": "your-handle.bsky.social", 
-    "password": "your-app-password"
-  },
-  "post": {
-    "text": "#AIart",
-    "cleanupDays": 7
-  }
-}
+### 環境変数設定
+```env
+# 必須
+BLUESKY_IDENTIFIER=your-handle.bsky.social
+BLUESKY_PASSWORD=your-app-password
+
+# オプション（デフォルト値あり）
+POST_TEXT="#AIart"
+CLEANUP_DAYS=7
+QUEUE_DIR="./queue"
+POSTED_DIR="./posted"
 ```
 
 ### 使用方法

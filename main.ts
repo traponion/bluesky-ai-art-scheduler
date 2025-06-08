@@ -5,7 +5,11 @@ import { BlueskyClient } from "./core/bluesky-client.ts";
 import { FileManager } from "./core/file-manager.ts";
 import { Poster } from "./core/poster.ts";
 
-interface Config {
+interface AppConfig {
+  bluesky: {
+    identifier: string;
+    password: string;
+  };
   post: {
     text: string;
     cleanupDays: number;
@@ -16,11 +20,12 @@ interface Config {
   };
 }
 
-async function loadEnv(): Promise<{ identifier: string; password: string }> {
+async function loadAppConfig(): Promise<AppConfig> {
   // .envファイルから読み込み
+  let envVars: Record<string, string> = {};
+  
   try {
     const envData = await Deno.readTextFile(".env");
-    const envVars: Record<string, string> = {};
     
     for (const line of envData.split("\n")) {
       const trimmed = line.trim();
@@ -37,52 +42,42 @@ async function loadEnv(): Promise<{ identifier: string; password: string }> {
         }
       }
     }
-    
-    // 環境変数で上書き
-    const identifier = Deno.env.get("BLUESKY_IDENTIFIER") || envVars.BLUESKY_IDENTIFIER;
-    const password = Deno.env.get("BLUESKY_PASSWORD") || envVars.BLUESKY_PASSWORD;
-    
-    if (!identifier || !password) {
-      throw new Error("BLUESKY_IDENTIFIER and BLUESKY_PASSWORD are required in .env file or environment variables");
-    }
-    
-    return { identifier, password };
   } catch (error) {
     if (error instanceof Deno.errors.NotFound) {
       throw new Error(".env file not found. Copy .env.example and edit it.");
     }
     throw error;
   }
-}
-
-async function loadConfig(): Promise<Config> {
-  const configPath = "./config/config.json";
   
-  if (!(await exists(configPath))) {
-    throw new Error(`Config file not found: ${configPath}. Copy config.json.example and edit it.`);
-  }
-
-  const configData = await Deno.readTextFile(configPath);
-  const config: Config = JSON.parse(configData);
-
-  // 環境変数による設定の上書き
-  if (Deno.env.get("POST_TEXT")) {
-    config.post.text = Deno.env.get("POST_TEXT")!;
+  // 環境変数で上書き（環境変数が優先）
+  const getEnvValue = (key: string): string | undefined => {
+    return Deno.env.get(key) || envVars[key];
+  };
+  
+  // 必須設定のチェック
+  const identifier = getEnvValue("BLUESKY_IDENTIFIER");
+  const password = getEnvValue("BLUESKY_PASSWORD");
+  
+  if (!identifier || !password) {
+    throw new Error("BLUESKY_IDENTIFIER and BLUESKY_PASSWORD are required in .env file or environment variables");
   }
   
-  if (Deno.env.get("CLEANUP_DAYS")) {
-    config.post.cleanupDays = parseInt(Deno.env.get("CLEANUP_DAYS")!);
-  }
-
-  // ディレクトリパスの環境変数上書き
-  if (Deno.env.get("QUEUE_DIR")) {
-    config.directories.queue = Deno.env.get("QUEUE_DIR")!;
-  }
+  // デフォルト値ありの設定
+  const config: AppConfig = {
+    bluesky: {
+      identifier,
+      password,
+    },
+    post: {
+      text: getEnvValue("POST_TEXT") || "#AIart",
+      cleanupDays: parseInt(getEnvValue("CLEANUP_DAYS") || "7"),
+    },
+    directories: {
+      queue: getEnvValue("QUEUE_DIR") || "./queue",
+      posted: getEnvValue("POSTED_DIR") || "./posted",
+    },
+  };
   
-  if (Deno.env.get("POSTED_DIR")) {
-    config.directories.posted = Deno.env.get("POSTED_DIR")!;
-  }
-
   return config;
 }
 
@@ -90,17 +85,14 @@ async function main() {
   try {
     console.log("🚀 Bluesky AI Art Scheduler starting...");
     
-    // 環境変数読み込み
-    const envConfig = await loadEnv();
-    console.log(`📋 Config loaded for: ${envConfig.identifier}`);
-    
     // 設定読み込み
-    const config = await loadConfig();
+    const config = await loadAppConfig();
+    console.log(`📋 Config loaded for: ${config.bluesky.identifier}`);
 
     // クライアント初期化
     const blueskyClient = new BlueskyClient(
-      envConfig.identifier,
-      envConfig.password
+      config.bluesky.identifier,
+      config.bluesky.password
     );
 
     const fileManager = new FileManager(
@@ -149,10 +141,10 @@ async function main() {
   } catch (error) {
     console.error("💥 Fatal error:", error.message);
     
-    if (error.message.includes("Config file not found")) {
+    if (error.message.includes(".env file not found")) {
       console.log("\n📝 To get started:");
-      console.log("   1. Copy config/config.json.example to config/config.json");
-      console.log("   2. Edit config.json with your Bluesky credentials");
+      console.log("   1. Copy .env.example to .env");
+      console.log("   2. Edit .env with your Bluesky credentials");
       console.log("   3. Add WebP images to ./queue/");
       console.log("   4. Run this script again");
     }
@@ -181,7 +173,7 @@ Environment Variables:
   BLUESKY_PASSWORD    Override Bluesky password
 
 Files:
-  config/config.json  Configuration file (copy from config.json.example)
+  .env               Environment variables file (copy from .env.example)
   queue/             Directory for WebP images to post
   posted/            Directory for posted images (auto-cleaned after 7 days)
 
@@ -193,8 +185,7 @@ Example cron entry (post 3 times daily):
 
 if (args.includes("--status") || args.includes("-s")) {
   try {
-    const config = await loadConfig();
-    const envConfig = await loadEnv();
+    const config = await loadAppConfig();
     const fileManager = new FileManager(config.directories.queue, config.directories.posted);
     const stats = await fileManager.getQueueStats();
     
@@ -203,7 +194,7 @@ if (args.includes("--status") || args.includes("-s")) {
     console.log(`   Total files: ${stats.totalFiles}`);
     console.log(`   Queue directory: ${config.directories.queue}`);
     console.log(`   Posted directory: ${config.directories.posted}`);
-    console.log(`   Bluesky account: ${envConfig.identifier}`);
+    console.log(`   Bluesky account: ${config.bluesky.identifier}`);
   } catch (error) {
     console.error("❌ Error checking status:", error.message);
     Deno.exit(1);
@@ -213,9 +204,8 @@ if (args.includes("--status") || args.includes("-s")) {
 
 if (args.includes("--config") || args.includes("-c")) {
   try {
-    const config = await loadConfig();
-    const envConfig = await loadEnv();
-    const blueskyClient = new BlueskyClient(envConfig.identifier, envConfig.password);
+    const config = await loadAppConfig();
+    const blueskyClient = new BlueskyClient(config.bluesky.identifier, config.bluesky.password);
     const fileManager = new FileManager(config.directories.queue, config.directories.posted);
     const poster = new Poster(blueskyClient, fileManager, config.post);
     

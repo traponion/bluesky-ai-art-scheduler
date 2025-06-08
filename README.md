@@ -55,12 +55,11 @@ deno-bluesky-scheduler/
 │   ├── bluesky-client.ts  # Bluesky API接続
 │   ├── file-manager.ts    # ファイル管理
 │   └── poster.ts          # 投稿実行
-├── config/                # 設定ファイル
-│   ├── config.json        # 実際の設定（要作成）
-│   └── config.json.example # 設定テンプレート
 ├── tests/                 # テストファイル
 ├── queue/                 # 投稿待ちWebP画像
 ├── posted/               # 投稿済み画像（1週間後削除）
+├── .env                  # 環境変数設定（要作成）
+├── .env.example          # 環境変数テンプレート
 ├── main.ts               # メインエントリーポイント
 └── README.md
 ```
